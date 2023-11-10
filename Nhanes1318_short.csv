@@ -1,4 +1,4 @@
-RIAGENDR,RIDAGEYR,RIDRETH3,DMQMILIZ,DMDBORN4,DMDEDUC2,DMDMARTL,DMDHHSIZ,DMDFMSIZ,INDHHIN2,INDFMIN2,INDFMPIR,LBXHBC,LBDHBG,LBXHBS,DR1IALCO,HEQ010,HIQ011,HIQ031A,OCD150,OCQ180,OCD270,SMQ020,WHD010,WHD020,INQ020
+Gender,Age,Race,Served in US,Country of Birth,Education,Marital Status,# of People in Household,# of People in Family,Annual Household Income,Annual Family Income,Income Poverty Ratio,Hepatitis B Core Antibody,Hepatitis B Surface Antigen,Hepatitis B Surface Antibody,Alcohol(gm),Ever had Hepatitis B,Covered by Health Insurance,Covered by Private Insurance,Type of Work Done Last Week,Hours worked last week,Months Worked in Current Job,Smoked at east 100 cigs,Height_in_inches,Weights_in_pounds,Income
 1.0,69.0,4.0,1.0,1.0,3.0,4.0,3.0,3.0,4.0,4.0,0.84,1.0,2.0,1.0,5.397605346934028e-79,2.0,1.0,,4.0,,,1.0,69.0,180.0,2.0
 1.0,54.0,3.0,2.0,1.0,3.0,1.0,4.0,4.0,7.0,7.0,1.78,2.0,2.0,2.0,5.397605346934028e-79,2.0,2.0,,1.0,50.0,420.0,1.0,71.0,200.0,1.0
 1.0,54.0,3.0,2.0,1.0,3.0,1.0,4.0,4.0,7.0,7.0,1.78,2.0,2.0,2.0,119.0,2.0,2.0,,1.0,50.0,420.0,1.0,71.0,200.0,1.0
