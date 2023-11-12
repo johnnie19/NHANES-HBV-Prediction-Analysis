@@ -1,0 +1,277 @@
+---  
+title: "Nhanes HPV analysis"
+author: "Data_Divers"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: yes
+---
+
+```{r startup, warning=FALSE, message=FALSE, comment=NA, echo=FALSE}
+library(tidyverse)
+library(gbm)
+library(ranger) # Loading Ranger
+library(caret) # Loading Caret package
+library(gridExtra) # To use grid arrange function
+library(DT) #style table
+library(Metrics) # To calculate AUC
+library(ROCR) # To plot ROC curves
+
+knitr::opts_chunk$set(comment=NA)
+options(scipen = 999)
+```
+
+# Analysisng Nhanes dataset
+
+
+#Original variable of interest based on analysis plan
+```{r}
+#read in our original variable of interest
+variable_info <- read.csv("Variables_info.csv")
+variable_info
+```
+
+```{r}
+#Nhanes1318 data
+nhanes <- read.csv("NhanesFinal2.csv")
+
+#drop HBV anti body test
+nhanes <- nhanes |> select(-LBXHBC)
+```
+
+
+We have several categorical values, including the variable we want to predict.
+
+In the following chunk of code we will transform those variables into factors:
+```{r}
+# Transform categorical variables into factors
+nhanes <- nhanes %>%
+  mutate(RIAGENDR = as.factor(RIAGENDR),
+         RIDRETH3 = as.factor(RIDRETH3),
+         DMDBORN4 = as.factor(DMDBORN4),
+         LBDHBG = as.factor(LBDHBG),
+         HEQ010 = as.factor(HEQ010),
+         HIQ011 = as.factor(HIQ011),
+         EDUALL = as.factor(EDUALL),
+         #DMDMARTLMod = as.factor(DMDMARTLMod),
+         #DMQMILIZmod = as.factor(DMQMILIZmod),
+         #OCD150mod = as.factor(OCD150mod),
+         #SMQ020mod = as.factor(SMQ020mod)
+         )
+```
+
+
+Explore our final dataset
+```{r}
+# Get number of records and variables 
+dim(nhanes)
+
+# Sum insights on variables:
+summary(nhanes)
+
+```
+
+We have 1506 records with 16 variables
+
+
+
+
+## Pre-processing data
+
+Our data is unbalanced, we will apply a caret function to do some pre-processing on it, using the result in our predictive models. To pre-process the original data the following methods will be used:
+
+* Scaling data - calculates the standard deviation for each variable and divides each value by its standard deviation.
+* Center - calculates the mean and subtracts it from each value. Combining it with Scaling method it will standardize data: moving centering data to 0 and standard deviation to 1.
+* Near Zero Values - removes variables with a near zero variance.
+* zero Variance- same as nzv
+
+
+
+```{r}
+set.seed(1)
+# Preprocessing data with methods described above
+preprocessParams <- preProcess(nhanes,
+                               method = c("center", "scale",  "nzv", "zv"))
+
+# Summarize transform result
+print(preprocessParams)
+
+# Transform the dataset using the parameters
+nhanes_std <- predict(preprocessParams, nhanes)
+
+# Summarize the transformed dataset
+summary(nhanes_std)
+
+table(nhanes_std$LBDHBG)
+
+```
+
+Data is now Standardized. 
+
+<!-- Yes, in most cases it is preferable to balance the number of samples in your classes. This is done by either over-sampling the minority classes, under-sampling the majority ones, or a combination of both. -->
+
+## Split our dataset into Train and Test buckets
+
+In this section we will split the dataset in 2; the Train subset will contain 70% of the sample, it will be used to train our prediction models. To assess models' performance, the Test subset will be used.
+
+Also, using the createDataPartition from caret will help to get the same distribution of the response variables in final Train and Test datasets (`r sum(nhanes_std$LBDHBG=="yes")/length(nhanes_std$LBDHBG)*100` % HBV = yes).
+
+```{r}
+set.seed(1)
+set.seed(1)
+# Create the indexes for Train and Test samples, taking into account distribution of our response variable
+nhames_indexes <- createDataPartition(nhanes_std$LBDHBG   ,
+                                   p = 0.7,
+                                   list = FALSE)
+
+# Create a train and tests from data frame 
+nhanes_train <- nhanes_std[ nhames_indexes,]
+nhanes_test  <- nhanes_std[-nhames_indexes,]
+
+```
+
+* nhanes_train - it will be used to train our models, we used 70% of entire sample to do that
+* nhanes_test - will be used to test our model, check how well it generalizes
+
+
+
+
+
+## Fit classification models
+
+We have 3 models(Logistic regression, random forest and Gradient boosting), 2 cv folds (5, 10) and 5 resampling methods( none,up, down , smote and rose)
+
+```{r}
+models <- c("glm", "ranger", "gbm")
+cv_folds <- c(5,10)
+resampling <- c("none","up", "down", "smote", "rose")
+
+all_conditions <- crossing(models,cv_folds,resampling)
+
+cond <- nrow(all_conditions)
+```
+
+
+```{r,message=FALSE, comment=NA, echo=FALSE, warning=FALSE}
+
+set.seed(123)
+#fit model across all conditions
+#
+#save confusion matrix for each condition
+confusion_mat_list <- list()
+
+#glm import variable
+important_var <- list()
+
+
+# Create a data frame to store results
+results_df <- data.frame(Model = all_conditions$models,
+                         CV_Folds = all_conditions$cv_folds,
+                         Resampling = all_conditions$resampling,
+                         AUC = rep(NA,cond),
+                         Accuracy = rep(NA,cond),
+                         Specificity = rep(NA,cond),
+                         Sensitivity = rep(NA,cond),
+                         stringsAsFactors = FALSE)
+
+# Loop through  modeling conditions
+for (cc in 1:nrow(all_conditions)) {
+  c_temp <- all_conditions[cc,]
+  
+  if(c_temp$resampling=="none"){
+    ctrl <- trainControl(method = "cv", number = c_temp |> pull(cv_folds), 
+                       sampling = NULL,
+                           summaryFunction = twoClassSummary,classProbs = TRUE,
+                           verboseIter = FALSE)
+  }else{
+    ctrl <- trainControl(method = "cv", number = c_temp |> pull(cv_folds), 
+                       sampling = c_temp |> pull(resampling),
+                           summaryFunction = twoClassSummary,classProbs = TRUE,
+                           verboseIter = FALSE)
+  }
+    temp_model <- train(LBDHBG ~., 
+               data = nhanes_train,
+               trControl=ctrl,
+               method= c_temp |> pull(models),
+               metric="ROC"
+               )
+  if(c_temp$models=="glm"){
+    temp_predict <- predict(temp_model, nhanes_test, type = 'raw')
+    important_var[[cc]] <- varImp(temp_model)
+  }else{
+    temp_predict <- predict(temp_model, nhanes_test)
+  }
+  temp_cm <- confusionMatrix(data = temp_predict, reference = nhanes_test$LBDHBG, positive = "yes")
+
+  confusion_mat_list[[cc]] <- temp_cm
+  
+  # Generate the test set AUCs 
+  actual <- as.numeric(as.factor(nhanes_test$LBDHBG)) -1
+  auc_temp <- auc(actual = actual, predicted = as.numeric(as.factor(temp_predict)) -1)
+  #extract accuracy
+  accuracy_temp <- temp_cm$overall["Accuracy"]
+  #extract sensitivity
+  sensitivity_temp <- temp_cm$byClass["Sensitivity"]
+  #extract specificity
+  specificity_temp <- temp_cm$byClass["Specificity"]
+  
+  #populate result table with all performance metrics
+  results_df$AUC[cc] <- auc_temp
+  results_df$Accuracy[cc] <- accuracy_temp
+  results_df$Specificity[cc] <- specificity_temp
+  results_df$Sensitivity[cc] <- sensitivity_temp
+}
+
+```
+
+
+# Result
+```{r}
+round_results <- results_df |> mutate_if(is.numeric,
+            round, digits = 4)
+```
+
+
+```{r}
+# Create a sortable DT table
+result_table <- datatable(round_results)
+result_table
+```
+
+
+# save result as csv
+```{r}
+write.csv(round_results, file = "final_resultfinalsun.csv", row.names = F)
+```
+
+
+# extract important variables for final model logistic regression
+```{r}
+impvarlogistic <- important_var[[11]]$importance |> arrange(Overall) |> 
+  mutate(individual = c(0,diff(Overall))) |> 
+  arrange(desc(individual))
+
+#Data to plot important predictors
+importpred <- data.frame(predictor = rownames(impvarlogistic),
+                         importance = impvarlogistic$individual)
+importpred$label <- c("Non-Hispanic Asian", "weight (pounds)",
+                      "Country of birth-Other", "Non-Hispanic Black",
+                      "Female","Insurance-Not covered", "HH Size",
+                      "Ever told have HBV", "Non-Hispanic White",
+                      "Edu-College", "Other Race", "Age","Other Hispanic", "Family size",
+                      "Heigh (inches)")
+```
+
+# plot predictor importance
+```{r}
+pred_imp <- ggplot(importpred, aes(x = importance, y = reorder(label, importance))) +
+  geom_bar(stat = "identity", fill = "skyblue") +
+  labs(title = "Predictor Importance",
+       x = "Importance",
+       y = "Predictor") +
+  theme_bw()
+
+pred_imp
+
+```
+
