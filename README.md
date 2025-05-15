@@ -25,7 +25,7 @@ Data_Divers
 ## Project Structure
 
 ```
-nhanes-hpv-analysis/
+nhanes-hbv-analysis/
 │
 ├── README.md                    # Project documentation
 ├── nhanes_final_analysis.Rmd    # Main analysis R Markdown file
