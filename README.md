@@ -25,14 +25,24 @@ Data_Divers
 ## Project Structure
 
 ```
-nhanes-hbv-analysis/
+NHANES-HBV-Prediction-Analysis/
 │
 ├── README.md                    # Project documentation
-├── nhanes_final_analysis.Rmd    # Main analysis R Markdown file
-├── Variables_info.csv           # Variable descriptions
-├── NhanesFinal2.csv            # Cleaned NHANES dataset
-└── final_resultfinalsun.csv     # Model performance results
+│
+├── code/                        # Analysis code
+│   └── nhanes_final_analysis.Rmd # Main analysis R Markdown file
+│
+├── data/                        # Data files
+│   ├── Nhanes1318.csv           # Raw NHANES dataset
+│   └── NhanesFinal2.csv         # Cleaned NHANES dataset
+│
+└── docs/                        # Documentation
+    └── Predictive Model for Chronic Hepatitis B Infection DataDivers.pptx  # Presentation
 ```
+
+**Note**: The following files mentioned in this README are not currently in the repository:
+- `Variables_info.csv`: Metadata describing variables used in the analysis
+- `final_resultfinalsun.csv`: Model performance results for all configurations
 
 ## Installation
 
@@ -100,14 +110,14 @@ Models were evaluated using:
 ### Running the Analysis
 1. Clone the repository
 2. Ensure all required R packages are installed
-3. Place the dataset files in the project directory
-4. Open `nhanes_final_analysis.Rmd` in RStudio
+3. Place any additional dataset files in the `data/` directory
+4. Open `code/nhanes_final_analysis.Rmd` in RStudio
 5. Knit the document to generate the full analysis report
 
 ### Viewing Results
 ```r
-# Load the results
-results <- read.csv("final_resultfinalsun.csv")
+# Load the results (if you have the file)
+results <- read.csv("data/final_resultfinalsun.csv")
 
 # View the sortable results table
 library(DT)
@@ -120,10 +130,14 @@ The analysis produces a comprehensive table comparing all model configurations, 
 
 ## Files Description
 
-- `nhanes_final_analysis.Rmd`: Main R Markdown file containing the complete analysis workflow
-- `Variables_info.csv`: Metadata describing variables used in the analysis
-- `NhanesFinal2.csv`: Cleaned and processed NHANES dataset
-- `final_resultfinalsun.csv`: Model performance results for all configurations
+- `code/nhanes_final_analysis.Rmd`: Main R Markdown file containing the complete analysis workflow
+- `data/Nhanes1318.csv`: Raw NHANES dataset
+- `data/NhanesFinal2.csv`: Cleaned and processed NHANES dataset
+- `docs/Predictive Model for Chronic Hepatitis B Infection DataDivers.pptx`: Presentation slides
+
+**Missing files (mentioned in documentation but not in repository):**
+- `data/Variables_info.csv`: Metadata describing variables used in the analysis
+- `data/final_resultfinalsun.csv`: Model performance results for all configurations
 
 ## License
 
